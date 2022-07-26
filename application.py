@@ -9,13 +9,11 @@ import seaborn as sns
 
 from sklearn.decomposition import PCA
 
-
+import random
 
 
 # ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 
-import pandas as pd
-import streamlit as st
 from st_aggrid import AgGrid, GridOptionsBuilder
 from st_aggrid.shared import GridUpdateMode
 
@@ -75,7 +73,7 @@ def show_cluster(df, orientation = ""):
     if orientation == 'Vertical':
 
         
-        aggrid_interactive_table(df)
+        # aggrid_interactive_table(df)
         return 
 
 
@@ -95,8 +93,17 @@ def show_cluster(df, orientation = ""):
 def transform_label(df_mix, df_test, orientation = ""):
     df_temp = df_mix.copy()
     df_testing = df_temp.loc[df_test.index]
+
     # show_cluster(df_testing['cluster'].sort_values(), orientation)
-    show_cluster(df_testing, orientation)
+    # if orientation == 'Horizontal': show_cluster(df_testing, orientation)
+    # elif orientation == 'Vertical':
+    #     df_test_temp = df_test.copy()
+    #     df_test_temp['cluster'] = df_testing['cluster']
+    #     df_test_temp['company'] = df_test.index
+        
+    #     df_test_temp = df_test_temp[df_test_temp.columns.tolist()[::-1]]
+        # aggrid_interactive_table(df_test_temp.sample(len(df_test)))
+        
     for index in df_test.index:
         df_temp.at[index, 'cluster'] = 'Input'
     df_temp['cluster'] = df_temp['cluster'].apply(lambda x: 'Cluster ' + str(x))
@@ -139,9 +146,10 @@ def display_price(df_price_mix, df_mix, df_target, title = ""):
 
 def launch():
     button = False
-    application_title = st.text_input('Insert application name', 'IDX Clustering')
+    st.subheader('Insert application name')
+    application_title = st.text_input('', 'IDX Clustering')
     if application_title == "":
-        st.info('Insert experiment name')
+        st.info('Insert application name')
     st.markdown(
         f"""
         This is a clustering attempt\n
@@ -151,7 +159,8 @@ def launch():
         """
     )
 
-    n_input = st.slider('Pick number of company for testing',
+    st.subheader('Pick number of company for testing')
+    n_input = st.slider('',
                         min_value = 1,
                         max_value = 400,
                         step = 1,
@@ -162,7 +171,8 @@ def launch():
     st.write('Number of company for input:', n_input, '👈 you choose')
 
     if application_title != "":
-        output_orientation = st.radio('Pick output orientation', ('Vertical', 'Horizontal'))    
+        st.subheader('Pick output orientation')
+        output_orientation = st.radio('', ('Vertical', 'Horizontal'))    
         button = st.button('Process ' + application_title,
                         help = 'This will cluster the choice of input'
         )
@@ -177,6 +187,9 @@ def launch():
 
     # processing
     if button:  
+
+        
+
         # DATA PREPARATION - mini adjustment from last experimentation
         # will simplify in the future # fitting pipeline
         df_price = df_price.T
@@ -186,6 +199,9 @@ def launch():
 
         # getting sample of n_input
         df_test = df_testing.sample(n_input).copy()
+        df_result = df_test.copy()
+        df_result = df_result.drop(columns = df_result.columns)
+        df_result['company'] = df_test.index
 
         # get mix data for dbscan detection
         df_mix = merge_df(df_test, df_kompas)    
@@ -195,16 +211,19 @@ def launch():
         if output_orientation == 'Vertical':
             # dbscan in action
             df_mix[cluster] = dbscan.fit_predict(df_mix)
+            df_result['Cluster DBSCAN'] = df_mix[cluster]
             display_price(df_price_mix.copy(), df_mix, df_kompas, 'KOMPAS performance of DBSCAN cluster')
             df_mix = display_cluster(df_mix, df_test, 'DBSCAN Cluster of Input and Kompas', output_orientation)
 
             # kmeans in action
             df_mix[cluster] = kmeans.predict(df_mix)
+            df_result['Cluster KMC KOMPAS'] = df_mix[cluster]
             display_price(df_price_mix.copy(), df_mix, df_kompas, 'KOMPAS performance of KMEANS cluster')
             df_mix = display_cluster(df_mix, df_test, 'KMEANS Cluster', output_orientation)
 
             # kmeans in action
             df_mix[cluster] = kmeans.fit_predict(df_mix)
+            df_result['Cluster KMC KOMPAS & INPUT'] = df_mix[cluster]
             display_price(df_price_mix.copy(), df_mix, df_mix, 'KOMPAS & INPUT performance of KMEANS cluster')
             df_mix = display_cluster(df_mix, df_test, 'KMEANS Cluster', output_orientation)
 
@@ -214,16 +233,21 @@ def launch():
             with col1:
                 # dbscan in action
                 df_mix[cluster] = dbscan.fit_predict(df_mix)
+                df_result['Cluster DBSCAN'] = df_mix[cluster]
                 display_price(df_price_mix.copy(), df_mix, df_kompas, 'KOMPAS performance of DBSCAN cluster')
                 df_mix = display_cluster(df_mix, df_test, 'DBSCAN Cluster of Input and Kompas', output_orientation)
             with col2:
                 # kmeans in action
                 df_mix[cluster] = kmeans.predict(df_mix)
+                df_result['Cluster KMC KOMPAS'] = df_mix[cluster]
                 display_price(df_price_mix.copy(), df_mix, df_kompas, 'KOMPAS performance of KMEANS cluster')
                 df_mix = display_cluster(df_mix, df_test, 'KMEANS Cluster', output_orientation)
             with col3:
                 # kmeans in action
                 df_mix[cluster] = kmeans.fit_predict(df_mix)
+                df_result['Cluster KMC KOMPAS & INPUT'] = df_mix[cluster]
                 display_price(df_price_mix.copy(), df_mix, df_mix, 'KOMPAS & INPUT performance of KMEANS cluster')
                 df_mix = display_cluster(df_mix, df_test, 'KMEANS Cluster', output_orientation)
 
+        # df_result = df_result[['Cluster DBSCAN', 'Cluster KMC KOMPAS', 'Cluster KMC KOMPAS & INPUT']]
+        aggrid_interactive_table(df_result)

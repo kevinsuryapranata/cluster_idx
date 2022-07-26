@@ -11,6 +11,36 @@ import seaborn as sns
 
 import streamlit as st
 
+from st_aggrid import AgGrid, GridOptionsBuilder
+from st_aggrid.shared import GridUpdateMode
+
+def aggrid_interactive_table(df: pd.DataFrame):
+    """Creates an st-aggrid interactive table based on a dataframe.
+
+    Args:
+        df (pd.DataFrame]): Source dataframe
+
+    Returns:
+        dict: The selected row
+    """
+    options = GridOptionsBuilder.from_dataframe(
+        df, enableRowGroup=True, enableValue=True, enablePivot=True
+    )
+
+    options.configure_side_bar()
+
+    options.configure_selection("single")
+    selection = AgGrid(
+        df,
+        enable_enterprise_modules=True,
+        gridOptions=options.build(),
+        theme="light",
+        update_mode=GridUpdateMode.MODEL_CHANGED,
+        allow_unsafe_jscode=True,
+    )
+
+    return selection
+
 cluster = 'cluster'
 df_kompas = pd.read_csv('kompas.csv').set_index('company')
 df_testing = pd.read_csv('testing.csv').set_index('company')
@@ -73,19 +103,27 @@ def display_cluster(df_sample, title = ""):
 
 def process(n_input, n_k, n_eps, n_minPts):
     df_sample = df_testing.sample(n_input).copy()
+    df_result = df_sample.copy()
+    df_result = df_result.drop(columns = df_result.columns)
+    df_result['company'] = df_sample.index
+
     kmeans = KMeans(n_clusters = n_k)
     dbscan = DBSCAN(eps = n_eps, min_samples = n_minPts)
     
     df_sample[cluster] = kmeans.fit_predict(df_sample)
+    df_result['Cluster KMC'] = df_sample[cluster]
     display_price(df_price.copy(), df_sample, df_sample, 'SAMPLE performance of KMEANS')
-    st.table(df_sample[cluster])
+    # st.table(df_sample[cluster])
     df_sample = display_cluster(df_sample, 'KMEANS Cluster')
     
 
     df_sample[cluster] = dbscan.fit_predict(df_sample)
+    df_result['Cluster DBSCAN'] = df_sample[cluster]
     display_price(df_price.copy(), df_sample, df_sample, 'SAMPLE performance of DBSCAN')
-    st.table(df_sample[cluster])
+    # st.table(df_sample[cluster])
     df_sample = display_cluster(df_sample, 'DBSCAN Cluster')
+
+    aggrid_interactive_table(df_result)
     return
 
 def launch():
@@ -94,7 +132,8 @@ def launch():
     n_k, n_eps, n_minPts = 0, 0, 0
     button = False
 
-    experiment_title = st.text_input('Insert experiment name', 'IDX Clustering (An Experiment)')
+    st.subheader('Insert experiment name')
+    experiment_title = st.text_input('', 'IDX Clustering (An Experiment)')
     if experiment_title == "":
         st.info('Insert experiment name')
     if experiment_title != "":
@@ -107,7 +146,8 @@ def launch():
             """
         )
         
-        n_input = st.slider('Pick number of company for testing',
+        st.subheader('Pick number of company for testing')
+        n_input = st.slider('',
                             min_value = 1,
                             max_value = 400,
                             step = 1,
@@ -117,7 +157,8 @@ def launch():
         st.write('Maximum input : 400')
         st.write('Number of company for input:', n_input, '👈 you choose')
 
-        n_k = st.slider('Pick number of K for KMC',
+        st.subheader('Pick number of K for KMC')
+        n_k = st.slider('', key = 'n_k',
                             min_value = 2,
                             max_value = n_input,
                             step = 1,
@@ -127,7 +168,8 @@ def launch():
         st.write('Maximum input :', n_input)
         st.write('Number of K for KMC:', n_k, '👈 you choose')
 
-        n_eps = st.slider('Pick number of eps for DBSCAN',
+        st.subheader('Pick number of eps for DBSCAN')
+        n_eps = st.slider('', key = 'n_eps',
                             min_value = 0.01,
                             max_value = 2.00,
                             step = 0.01,
@@ -137,7 +179,8 @@ def launch():
         st.write('Maximum input : 2.00')
         st.write('Number of eps for DBSCAN:', n_eps, '👈 you choose')
 
-        n_minPts = st.slider('Pick number of minPts for DBSCAN',
+        st.subheader('Pick number of minPts for DBSCAN')
+        n_minPts = st.slider('', key = 'n_minPts',
                             min_value = 2,
                             max_value = n_input,
                             step = 1,
@@ -153,6 +196,7 @@ def launch():
 
     if button:
         process(n_input, n_k, n_eps, n_minPts)
+
     # if experiment_title != "":
     #     output_orientation = st.radio('Pick output orientation', ('Vertical', 'Horizontal'))    
     #     button = st.button('Process ' + experiment_title,
