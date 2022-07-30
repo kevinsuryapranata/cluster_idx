@@ -184,7 +184,7 @@ def launch():
 
     dbscan = pickle.load(open('dbscan.pkl', 'rb'))
 #     kmeans = pickle.load(open('kmeans.pkl', 'rb'))
-    kmeans = KMeans(n_clusters = 4, random_state = 4)
+    kmeans = KMeans(n_clusters = 4, random_state = 123).fit(df_kompas)
 
     # processing
     if button:  
