@@ -183,7 +183,8 @@ def launch():
     df_price = pd.read_csv('idxx_price_2020.csv').set_index('Date')
 
     dbscan = pickle.load(open('dbscan.pkl', 'rb'))
-    kmeans = pickle.load(open('kmeans.pkl', 'rb'))
+#     kmeans = pickle.load(open('kmeans.pkl', 'rb'))
+    kmeans = KMeans(n_clusters = 4, random_state = 4)
 
     # processing
     if button:  
